@@ -61,7 +61,7 @@ inline fun <reified T : Throwable> shouldThrowExactly(block: () -> Any?): T {
   val thrownThrowable = try {
     block()
     null  // Can't throw Failures.failure here directly, as it would be caught by the catch clause, and it's an AssertionError, which is a special case
-  } catch (thrown: Throwable) { thrown  }
+  } catch (thrown: Throwable) { thrown }
 
   return when {
     thrownThrowable == null -> throw Failures.failure("Expected exception ${T::class.qualifiedName} but no exception was thrown.")
