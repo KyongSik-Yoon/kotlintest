@@ -4,6 +4,7 @@ import com.github.difflib.DiffUtils
 import com.github.difflib.patch.Chunk
 import com.github.difflib.patch.Delta
 import com.github.difflib.patch.DeltaType
+import kotlin.math.max
 
 /**
  * Run multiple assertions and throw a single error after all are executed if any fail
@@ -33,10 +34,14 @@ inline fun <T> assertSoftly(assertions: () -> T): T {
 
 fun <T> be(expected: T) = equalityMatcher(expected)
 fun <T> equalityMatcher(expected: T) = object : Matcher<T> {
-  override fun test(value: T): Result {
+  override fun test(value: T): MatcherResult {
     val expectedRepr = stringRepr(expected)
     val valueRepr = stringRepr(value)
-    return Result(expected == value, equalsErrorMessage(expectedRepr, valueRepr), "$expectedRepr should not equal $valueRepr")
+    return MatcherResult(
+      compare(expected, value),
+      { equalsErrorMessage(expectedRepr, valueRepr) },
+      { "$expectedRepr should not equal $valueRepr" }
+    )
   }
 }
 
@@ -109,8 +114,8 @@ infix fun <T> T.shouldNotBe(any: Any?) {
 infix fun <T> T.shouldHave(matcher: Matcher<T>) = should(matcher)
 infix fun <T> T.should(matcher: Matcher<T>) {
   val result = matcher.test(this)
-  if (!result.passed) {
-    ErrorCollector.collectOrThrow(Failures.failure(ErrorCollector.clueContext.get() + result.failureMessage))
+  if (!result.passed()) {
+    ErrorCollector.collectOrThrow(Failures.failure(ErrorCollector.clueContextAsString() + result.failureMessage()))
   }
 }
 
@@ -124,8 +129,10 @@ infix fun <T> T.should(matcher: (T) -> Unit) = matcher(this)
 
 internal fun equalsError(expected: Any?, actual: Any?): Throwable {
 
-  val (expectedRepr, actualRepr) = diffLargeString(stringRepr(expected), stringRepr(actual))
-  val message = ErrorCollector.clueContext.get() + equalsErrorMessage(expectedRepr, actualRepr)
+  val largeStringDiffMinSize = System.getProperty("kotlintest.assertions.multi-line-diff-size", "50").toInt()
+
+  val (expectedRepr, actualRepr) = diffLargeString(stringRepr(expected), stringRepr(actual), largeStringDiffMinSize)
+  val message = ErrorCollector.clueContextAsString() + equalsErrorMessage(expectedRepr, actualRepr)
 
   val throwable = junit5AssertionFailedError(message, expectedRepr, actualRepr)
       ?: junit4comparisonFailure(expectedRepr, actualRepr)
@@ -155,17 +162,21 @@ fun diffLargeString(expected: String, actual: String, minSizeForDiff: Int = 50):
     return deltas.joinToString("\n\n") { delta ->
       val chunk = chunker(delta)
       // include a line before and after to give some context on deletes
-      val snippet = lines.drop(Math.max(chunk.position - 1, 0)).take(chunk.position + chunk.size()).joinToString("\n")
+      val snippet = lines.drop(max(chunk.position - 1, 0)).take(chunk.position + chunk.size()).joinToString("\n")
       "[${typeString(delta.type)} at line ${chunk.position}] $snippet"
     }
   }
 
-  return if (expected.lines().size < minSizeForDiff && actual.lines().size < minSizeForDiff) Pair(expected, actual) else {
+  val useDiff = expected.lines().size >= minSizeForDiff
+      && actual.lines().size >= minSizeForDiff &&
+      System.getProperty("kotlintest.assertions.multi-line-diff") != "simple"
+
+  return if (useDiff) {
     val patch = DiffUtils.diff(actual, expected)
     return if (patch.deltas.isEmpty()) Pair(expected, actual) else {
       Pair(diffs(expected.lines(), patch.deltas, { it.original }), diffs(actual.lines(), patch.deltas, { it.revised }))
     }
-  }
+  } else Pair(expected, actual)
 }
 
 private fun equalsErrorMessage(expected: Any?, actual: Any?) = "expected: $expected but was: $actual"
@@ -208,8 +219,13 @@ internal fun stringRepr(obj: Any?): String = when (obj) {
   is Char -> "'$obj'"
   is String -> "\"$obj\""
   is Array<*> -> obj.map { recursiveRepr(obj, it) }.toString()
+  is BooleanArray -> obj.map { recursiveRepr(obj, it) }.toString()
+  is IntArray -> obj.map { recursiveRepr(obj, it) }.toString()
+  is ShortArray -> obj.map { recursiveRepr(obj, it) }.toString()
   is FloatArray -> obj.map { recursiveRepr(obj, it) }.toString()
+  is DoubleArray -> obj.map { recursiveRepr(obj, it) }.toString()
   is LongArray -> obj.map { recursiveRepr(obj, it) }.toString()
+  is ByteArray -> obj.map { recursiveRepr(obj, it) }.toString()
   is CharArray -> obj.map { recursiveRepr(obj, it) }.toString()
   is Iterable<*> -> obj.map { recursiveRepr(obj, it) }.toString()
   is Map<*, *> -> obj.map { (k, v) -> recursiveRepr(obj, k) to recursiveRepr(obj, v) }.toMap().toString()
@@ -219,8 +235,3 @@ internal fun stringRepr(obj: Any?): String = when (obj) {
 private fun recursiveRepr(root: Any, node: Any?): String {
   return if (root == node) "(this ${root::class.java.simpleName})" else stringRepr(node)
 }
-
-// -- deprecated dsl
-
-@Deprecated("shouldEqual is deprecated in favour of shouldBe", ReplaceWith("shouldBe(any)"))
-infix fun <T> T.shouldEqual(any: Any?) = shouldBe(any)

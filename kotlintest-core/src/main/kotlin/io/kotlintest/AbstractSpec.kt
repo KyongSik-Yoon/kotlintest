@@ -1,7 +1,7 @@
 package io.kotlintest
 
 import org.junit.platform.commons.annotation.Testable
-import java.io.Closeable
+import java.lang.AutoCloseable
 import java.util.*
 
 @Testable
@@ -16,7 +16,7 @@ abstract class AbstractSpec : Spec {
   override fun testCases(): List<TestCase> = rootTestCases.toList()
 
   protected fun createTestCase(name: String, test: suspend TestContext.() -> Unit, config: TestCaseConfig, type: TestType) =
-      TestCase(description().append(name), this, test, lineNumber(), type, config)
+      TestCase(Description.spec(this::class).append(name), this, test, sourceRef(), type, config)
 
   protected fun addTestCase(name: String, test: suspend TestContext.() -> Unit, config: TestCaseConfig, type: TestType) {
     if (rootTestCases.any { it.name == name })
@@ -26,12 +26,12 @@ abstract class AbstractSpec : Spec {
     rootTestCases.add(createTestCase(name, test, config, type))
   }
 
-  private val closeablesInReverseOrder = LinkedList<Closeable>()
+  private val closeablesInReverseOrder = LinkedList<AutoCloseable>()
 
   /**
    * Registers a field for auto closing after all tests have run.
    */
-  protected fun <T : Closeable> autoClose(closeable: T): T {
+  protected fun <T : AutoCloseable> autoClose(closeable: T): T {
     closeablesInReverseOrder.addFirst(closeable)
     return closeable
   }
@@ -49,3 +49,7 @@ abstract class AbstractSpec : Spec {
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class DisplayName(val name: String)
+
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class DoNotParallelize

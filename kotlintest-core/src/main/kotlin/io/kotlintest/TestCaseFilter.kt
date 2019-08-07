@@ -8,15 +8,19 @@ interface TestCaseFilter : ProjectLevelFilter {
     override suspend fun intercept(testCase: TestCase, execute: suspend (TestCase, suspend (TestResult) -> Unit) -> Unit, complete: suspend (TestResult) -> Unit) {
       when (filter(testCase.description)) {
         TestFilterResult.Include -> execute(testCase, complete)
-        TestFilterResult.Ignore -> complete(TestResult.Ignored)
+        TestFilterResult.Exclude -> complete(TestResult.Ignored)
       }
     }
   }
 }
 
+object IncludeAllTestCaseFilter : TestCaseFilter {
+  override fun filter(description: Description): TestFilterResult = TestFilterResult.Include
+}
+
 interface ProjectLevelFilter
 
 enum class TestFilterResult {
-  Include, Ignore
+  Include, Exclude
 }
 

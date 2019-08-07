@@ -1,7 +1,7 @@
 package io.kotlintest.matchers.maps
 
 import io.kotlintest.Matcher
-import io.kotlintest.Result
+import io.kotlintest.MatcherResult
 import io.kotlintest.matchers.containAll
 import io.kotlintest.matchers.containExactly
 import io.kotlintest.matchers.haveKey
@@ -12,11 +12,14 @@ import io.kotlintest.should
 import io.kotlintest.shouldNot
 
 fun <K, V> mapcontain(key: K, v: V) = object : Matcher<Map<K, V>> {
-  override fun test(value: Map<K, V>) = Result(value[key] == v, "Map should contain mapping $key=$v but was $value", "Map should not contain mapping $key=$v but was $value")
+  override fun test(value: Map<K, V>) = MatcherResult(value[key] == v, "Map should contain mapping $key=$v but was $value", "Map should not contain mapping $key=$v but was $value")
 }
 
 fun <K, V> Map<K, V>.shouldContain(key: K, value: V) = this should mapcontain(key, value)
 fun <K, V> Map<K, V>.shouldNotContain(key: K, value: V) = this shouldNot mapcontain(key, value)
+
+infix fun <K, V> Map<K, V>.shouldContain(entry: Pair<K, V>) = this should mapcontain(entry.first, entry.second)
+infix fun <K, V> Map<K, V>.shouldNotContain(entry: Pair<K, V>) = this shouldNot mapcontain(entry.first, entry.second)
 
 infix fun <K, V> Map<K, V>.shouldContainExactly(expected: Map<K, V>) = this should containExactly(expected)
 infix fun <K, V> Map<K, V>.shouldNotContainExactly(expected: Map<K, V>) = this shouldNot containExactly(expected)

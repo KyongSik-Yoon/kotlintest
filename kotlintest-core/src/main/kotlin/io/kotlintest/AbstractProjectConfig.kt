@@ -2,7 +2,9 @@ package io.kotlintest
 
 import io.kotlintest.extensions.ProjectExtension
 import io.kotlintest.extensions.ProjectLevelExtension
+import io.kotlintest.extensions.ProjectListener
 import io.kotlintest.extensions.TestListener
+import java.time.Duration
 
 /**
  * Project-wide configuration. Extensions returned by an
@@ -30,6 +32,11 @@ abstract class AbstractProjectConfig {
   open fun listeners(): List<TestListener> = emptyList()
 
   /**
+   * List of project wide [ProjectListener] instances.
+   */
+  open fun projectListeners(): List<ProjectListener> = emptyList()
+
+  /**
    * List of project wide [TestCaseFilter] instances.
    */
   open fun filters(): List<ProjectLevelFilter> = emptyList()
@@ -47,6 +54,17 @@ abstract class AbstractProjectConfig {
   open fun specExecutionOrder(): SpecExecutionOrder = LexicographicSpecExecutionOrder
 
   /**
+   * The [IsolationMode] set here will be applied if the isolation mode in a spec is null.
+   */
+  open fun isolationMode(): IsolationMode? = null
+
+  /**
+   * A global timeout that is applied to all tests if not null.
+   * Tests which define their own timeout will override this.
+   */
+  open val timeout: Duration? = null
+
+  /**
    * Override this function and return a number greater than 1 if you wish to
    * enable parallel execution of tests. The number returned is the number of
    * concurrently executing specs.
@@ -59,10 +77,11 @@ abstract class AbstractProjectConfig {
   /**
    * When set to true, failed specs are written to a file called spec_failures.
    * This file is used on subsequent test runs to run the failed specs first.
-   * To disable this feature, set this to false, or set the system property
-   * 'kotlintest.write.specfailures=false'
+   *
+   * To enable this feature, set this to true, or set the system property
+   * 'kotlintest.write.specfailures=true'
    */
-  open fun writeSpecFailureFile(): Boolean = true
+  open fun writeSpecFailureFile(): Boolean = false
 
   /**
    * Sets the order of top level tests in a spec.
@@ -74,6 +93,18 @@ abstract class AbstractProjectConfig {
    * will be used.
    */
   open fun testCaseOrder(): TestCaseOrder? = null
+
+  /**
+   * Override this value and set it to true if you want all tests to behave as if they
+   * were operating in an [assertSoftly] block.
+   */
+  open val globalAssertSoftly: Boolean = false
+
+  /**
+   * Override this value and set it to true if you want the build to be marked as failed
+   * if there was one or more tests that were disabled/ignored.
+   */
+  open val failOnIgnoredTests : Boolean = false
 
   /**
    * Executed before the first test of the project, but after the

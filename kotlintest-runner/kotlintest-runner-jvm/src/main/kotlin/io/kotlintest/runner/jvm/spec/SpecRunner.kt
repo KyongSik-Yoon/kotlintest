@@ -1,13 +1,9 @@
 package io.kotlintest.runner.jvm.spec
 
-import io.kotlintest.IsolationMode
-import io.kotlintest.Project
-import io.kotlintest.Spec
-import io.kotlintest.TestCase
-import io.kotlintest.TestResult
+import io.kotlintest.*
 import io.kotlintest.extensions.SpecExtension
 import io.kotlintest.extensions.TestListener
-import io.kotlintest.extensions.TopLevelTest
+import io.kotlintest.extensions.TopLevelTests
 import io.kotlintest.runner.jvm.TestEngineListener
 
 /**
@@ -21,10 +17,10 @@ import io.kotlintest.runner.jvm.TestEngineListener
  */
 abstract class SpecRunner(val listener: TestEngineListener) {
 
-  abstract fun execute(spec: Spec, topLevelTests: List<TopLevelTest>): Map<TestCase, TestResult>
+  abstract fun execute(spec: Spec, topLevelTests: TopLevelTests): Map<TestCase, TestResult>
 
   private suspend fun interceptSpec(spec: Spec, remaining: List<SpecExtension>, afterInterception: suspend () -> Unit) {
-    val listeners = listOf(spec) + spec.listeners() + Project.listeners()
+    val listeners = listOf(spec) + spec.listenerInstances + Project.listeners()
     when {
       remaining.isEmpty() -> {
         executeBeforeSpec(spec, listeners)

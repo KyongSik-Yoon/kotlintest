@@ -1,13 +1,13 @@
 package io.kotlintest.runner.jvm.spec
 
 import arrow.core.Try
-import io.kotlintest.IsolationMode
-import io.kotlintest.Project
-import io.kotlintest.Spec
-import io.kotlintest.runner.jvm.TestEngineListener
+import arrow.core.getOrElse
+import arrow.core.orElse
+import arrow.core.toOption
+import io.kotlintest.*
 import io.kotlintest.internal.topLevelTests
+import io.kotlintest.runner.jvm.TestEngineListener
 import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -18,23 +18,27 @@ import java.util.concurrent.ScheduledExecutorService
  * to instantiate fresh specs based on the [IsolationMode] of the spec.
  */
 class SpecExecutor(private val engineListener: TestEngineListener,
-                   private val listenerExecutors: ConcurrentLinkedQueue<ExecutorService>,
                    private val scheduler: ScheduledExecutorService) {
 
   private val logger = LoggerFactory.getLogger(this.javaClass)
 
-  private fun withListenerExecutor(thunk: (ExecutorService) -> Unit) {
-    val listenerExecutor = listenerExecutors.poll() ?: Executors.newSingleThreadExecutor()
+  // each spec has it's own "main thread" (courtesy of an executor)
+  // this main thread is always used to execute the before and after callbacks, and also tests
+  // where config has threads = 1 (the default). In tests where threads > 1, then a seperate executor is required.
+
+  private fun withExecutor(thunk: (ExecutorService) -> Unit) {
+    val listenerExecutor = Executors.newSingleThreadExecutor()
     thunk(listenerExecutor)
-    listenerExecutors.add(listenerExecutor)
+    // only on exiting the spec can the listener executor can be shutdown
+    listenerExecutor.shutdown()
   }
 
   fun execute(spec: Spec) = Try {
-    withListenerExecutor { listenerExecutor ->
+    withExecutor { listenerExecutor ->
 
-      engineListener.beforeSpecClass(spec.description(), spec::class)
+      engineListener.beforeSpecClass(spec::class)
 
-      val userListeners = listOf(spec) + spec.listeners() + Project.listeners()
+      val userListeners = listOf(spec) + spec.listenerInstances + Project.listeners()
 
       Try {
 
@@ -42,8 +46,8 @@ class SpecExecutor(private val engineListener: TestEngineListener,
         logger.trace("Discovered top level tests $tests for spec $spec")
 
         userListeners.forEach {
-          it.beforeSpecStarted(spec.description(), spec)
-          it.beforeSpecClass(spec, tests)
+          it.beforeSpecStarted(Description.spec(spec::class), spec)
+          it.beforeSpecClass(spec, tests.tests)
         }
 
         val runner = runner(spec, listenerExecutor, scheduler)
@@ -51,17 +55,17 @@ class SpecExecutor(private val engineListener: TestEngineListener,
 
         userListeners.forEach {
           it.afterSpecClass(spec, results)
-          it.afterSpecCompleted(spec.description(), spec)
+          it.afterSpecCompleted(Description.spec(spec::class), spec)
         }
 
       }.fold(
           {
-            logger.trace("Completing spec ${spec.description()} with error $it")
-            engineListener.afterSpecClass(spec.description(), spec.javaClass.kotlin, it)
+            logger.trace("Completing spec ${Description.spec(spec::class)} with error $it")
+            engineListener.afterSpecClass(spec.javaClass.kotlin, it)
           },
           {
-            logger.trace("Completing spec ${spec.description()} with success")
-            engineListener.afterSpecClass(spec.description(), spec.javaClass.kotlin, null)
+            logger.trace("Completing spec ${Description.spec(spec::class)} with success")
+            engineListener.afterSpecClass(spec.javaClass.kotlin, null)
           }
       )
     }
@@ -74,14 +78,13 @@ class SpecExecutor(private val engineListener: TestEngineListener,
   // which is undesirable in some situations, see
   // https://github.com/kotlintest/kotlintest/issues/447
   private fun runner(spec: Spec, listenerExecutor: ExecutorService, scheduler: ScheduledExecutorService): SpecRunner {
-    return when (spec.isolationMode()) {
+    val mode = spec.isolationMode().toOption().orElse { Project.isolationMode().toOption() }.getOrElse {
+      if (spec.isInstancePerTest()) IsolationMode.InstancePerTest else IsolationMode.SingleInstance
+    }
+    return when (mode) {
       IsolationMode.SingleInstance -> SingleInstanceSpecRunner(engineListener, listenerExecutor, scheduler)
       IsolationMode.InstancePerTest -> InstancePerTestSpecRunner(engineListener, listenerExecutor, scheduler)
       IsolationMode.InstancePerLeaf -> InstancePerLeafSpecRunner(engineListener, listenerExecutor, scheduler)
-      null -> when {
-        spec.isInstancePerTest() -> InstancePerTestSpecRunner(engineListener, listenerExecutor, scheduler)
-        else -> SingleInstanceSpecRunner(engineListener, listenerExecutor, scheduler)
-      }
     }
   }
 }

@@ -27,6 +27,7 @@ For the extension function style, each function has an equivalent negated versio
 | `obj.shouldBeTypeOf<T>()` | Asserts that the given reference is exactly of type T. Subclass will fail. Ie, `1 should beOfType<Number>` would fail because although 1 _is_ a Number, the runtime type is not Number. |
 | `obj.shouldBeInstanceOf<T>` | Asserts that the given reference is of type T or a subclass of T. |
 | `obj.shouldHaveAnnotation(annotationClass)` | Asserts that the object has an annotation of the given type. |
+| `obj.shouldBeNull()` | Asserts that a given reference is null.|
 
 | Maps ||
 | -------- | ---- |
@@ -58,6 +59,14 @@ For the extension function style, each function has an equivalent negated versio
 | `str.shouldHaveSameLengthAs(length)` | Asserts that the string has the same length as another string. |
 | `str.shouldMatch(regex)` | Asserts that the string fully matches the given regex. |
 | `str.shouldStartWith("prefix")` | Asserts that the string starts with the given prefix. The prefix can be equal to the string. This matcher is case sensitive. To make this case insensitive call `toLowerCase()` on the value before the matcher. |
+| `str.shouldBeEqualIgnoringCase(other)` | Asserts that the string is equal to another string ignoring case. |
+
+| JSON ||
+| -------- | ---- |
+| `str.shouldMatchJson(json)` | Asserts that the JSON is equal to another JSON ignoring properties' order and formatting. |
+| `str.shouldContainJsonKey("$.key")` | Asserts that the JSON contains a `key`. |
+| `str.shouldContainJsonKeyValue("$.key", "value")` | Asserts that the JSON contains a `key` with a specific `value`. |
+| `str.shouldMatchJsonResource("/file.json")` | Asserts that the JSON is equal to the existing `/file.json` ignoring properties' order and formatting. |
 
 | Integers ||
 | -------- | ---- |
@@ -69,6 +78,7 @@ For the extension function style, each function has an equivalent negated versio
 | `int.shouldBeEven()` | Asserts that the integer is even. |
 | `int.shouldBeOdd()` | Asserts that the integer is odd. |
 | `int.shouldBeInRange(range)` | Asserts that the integer is included in the given range. |
+| `int.shouldBeZero()` | Asserts that the integer is zero |
 
 | Longs ||
 | -------- | ---- |
@@ -80,10 +90,10 @@ For the extension function style, each function has an equivalent negated versio
 | `long.shouldBeInRange(range)` | Asserts that the long is included in the given range. |
 | `long.shouldBeEven()` | Asserts that the long is even. |
 | `long.shouldBeOdd()` | Asserts that the long is odd. |
+| `long.shouldBeZero()` | Asserts that the long is zero |
 
 | Doubles or Floats ||
 | -------- | ---- |
-| `double.shouldBeExactly(value)` | Asserts that the double is exactly equal to the given value. Exactly equal means the same representation in bits. |
 | `double.shouldBe(value plusOrMinus(tolerance))` | Asserts that the double is equal to the given value within a tolerance range. This is the recommended way of testing for double equality. |
 | `double.shouldBeBetween(x, y)` | Asserts that the double is between x and y, inclusive on both x and y |
 | `double.shouldBeLessThan(n)` | Asserts that the double is less than the given value n |
@@ -92,6 +102,23 @@ For the extension function style, each function has an equivalent negated versio
 | `double.shouldBeGreaterThanOrEqual(n)` | Asserts that the double is greater than or equal to the given value n |
 | `double.shouldBePositive()` | Asserts that the double is positive |
 | `double.shouldBeNegative()` | Asserts that the double is negative |
+| `double.shouldBePositiveInfinity()` | Asserts that the double is positive infinity |
+| `double.shouldBeNegativeInfinity()` | Asserts that the double is negative infinity |
+| `double.shouldBeNaN()` | Asserts that the double is the Not-a-Number constant NaN |
+| `double.shouldBeZero()` | Asserts that the double is zero |
+
+| BigDecimal ||
+| -------- | ---- |
+| `bigDecimal.shouldHavePrecision(n)` | Asserts that the bigDecimal precision is equals than the given value n |
+| `bigDecimal.shouldHaveScale(n)` | Asserts that the bigDecimal scale is equals than the given value n |
+| `bigDecimal.shouldBePositive()` | Asserts that the bigDecimal is positive |
+| `bigDecimal.shouldBeNegative()` | Asserts that the bigDecimal is negative |
+| `bigDecimal.shouldBeZero()` | Asserts that the bigDecimal is zero |
+| `bigDecimal.shouldBeLessThan(n)` | Asserts that the bigDecimal is less than the given value n | 
+| `bigDecimal.shouldBeLessThanOrEquals(n)` | Asserts that the bigDecimal is less than or equ
+| `bigDecimal.shouldBeGreaterThan(n)` | Asserts that the bigDecimal is greater than the given value n | 
+| `bigDecimal.shouldBeGreaterThanOrEquals(n)` | Asserts that the bigDecimal is greater than or equals to the given value n | 
+| `bigDecimal.shouldBeInRange(r)` | Asserts that the bigDecimal is in the given range | 
 
 | Collections ||
 | -------- | ---- |
@@ -110,7 +137,7 @@ For the extension function style, each function has an equivalent negated versio
 | `collection.shouldHaveLowerBound(element)` | Asserts that the given element is smaller or equal to every element of the collection. Works only for elements that implement Comparable. |
 | `collection.shouldHaveUpperBound(element)` | Asserts that the given element is larger or equal to every element of the collection. Works only for elements that implement Comparable. |
 | `collection.shouldBeSmallerThan(col)` | Asserts that the collection is smaller than the other collection. |
-| `collection.shouldBeLargerThen(col)` | Asserts that the collection is larger than the other collection. |
+| `collection.shouldBeLargerThan(col)` | Asserts that the collection is larger than the other collection. |
 | `collection.shouldBeSameSizeAs(col)` | Asserts that the collection has the same size as the other collection. |
 | `collection.shouldHaveAtLeastSize(n)` | Asserts that the collection has at least size n. |
 | `collection.shouldHaveAtMostSize(n)` | Asserts that the collection has at most size n. |
@@ -119,6 +146,7 @@ For the extension function style, each function has an equivalent negated versio
 | `list.shouldHaveElementAt(index, element)` | Asserts that this list contains the given element at the given position. |
 | `list.shouldStartWith(lst)` | Asserts that this list starts with the elements of the given list, in order. |
 | `list.shouldEndWith(lst)` | Asserts that this list ends with the elements of the given list, in order. |
+| `value.shouldBeOneOf(collection)` | Asserts that a specific instance is contained in a collection. |
 
 | URIs ||
 | -------- | ---- |
@@ -154,6 +182,10 @@ For the extension function style, each function has an equivalent negated versio
 | `file.shouldHaveName(name)` | Asserts that the file's name matches the given name. |
 | `file.shouldHavePath(path)` | Asserts that the file's path matches the given path. |
 | `file.shouldStartWithPath(prefix)` | Asserts that the file's path starts with the given prefix. |
+| `dir.shouldContainFileDeep(name)` | Assert that file is a directory and that it or any sub directory contains a file with the given name. |
+| `dir.shouldContainFiles(name1, name2, ..., nameN)` | Asserts that the file is a directory and that it contains al files with the given name. |
+| `file.shouldBeSymbolicLink()` | Asserts that the file is a symbolic link. |
+| `file.shouldHaveParent(name)` |  Assert that the file has a parent with the given name | 
 
 | Dates ||
 | -------- | ---- |
@@ -164,6 +196,26 @@ For the extension function style, each function has an equivalent negated versio
 | `date.shouldBeAfter(otherDate)` | Asserts that the date is after the given date. |
 | `date.shouldBeWithin(period, otherDate)` | Asserts that the date is within the period of the given date. |
 | `date.shouldBeWithin(duration, otherDate)` | Asserts that the date is within the duration of the given date. |
+| `date.shouldBeBetween(firstDate, secondDate)` | Asserts that the date is between firstdate and seconddate. |
+| `date.shouldHaveYear(year)` | Asserts that the date have correct year. |
+| `date.shouldHaveMonth(month)` | Asserts that the date have correct month. |
+| `date.shouldHaveDayOfYear(day)` | Asserts that the date have correct day of year. |
+| `date.shouldHaveDayOfMonth(day)` | Asserts that the date have correct day of month. |
+| `date.shouldHaveDayOfWeek(day)` | Asserts that the date have correct day of week. |
+| `date.shouldHaveHour(hour)` | Asserts that the date have correct hour. |
+| `date.shouldHaveMinute(Minute)` | Asserts that the date have correct minute. |
+| `date.shouldHaveSecond(second)` | Asserts that the date have correct second. |
+| `date.shouldHaveNano(nao)` | Asserts that the date have correct nano second. |
+
+| Times ||
+| -------- | ---- |
+| `time.shouldHaveSameHoursAs(otherTime)` | Asserts that the time has the same hours as the given time. |
+| `time.shouldHaveSameMinutesAs(otherTime)` | Asserts that the time has the same minutes as the given time. |
+| `time.shouldHaveSameSecondsAs(otherTime)` | Asserts that the time has the same seconds as the given time. |
+| `time.shouldHaveSameNanosAs(otherTime)` | Asserts that the time has the same nanos as the given time. |
+| `time.shouldBeBefore(otherTime)` | Asserts that the time is before the given time. |
+| `time.shouldBeAfter(otherTime)` | Asserts that the time is after the given time. |
+| `time.shouldBeBetween(firstTime, secondTime)` | Asserts that the time is between firstTime and secondTime. |
 
 | Concurrent ||
 | -------- | ---- |
@@ -182,3 +234,58 @@ For the extension function style, each function has an equivalent negated versio
 | `thread.shouldBeDaemon()` | Asserts that the thread is a daemon thread. |
 | `thread.shouldBeAlive()` | Asserts that the thread is alive. |
 | `thread.shouldBeTerminated()` | Asserts that the thread has been terminated. |
+
+| Throwables / Exceptions | |
+| ---- | --- |
+| `throwable.shouldHaveMessage(message)` | Asserts that the throwable message is the same of the given one. |
+| `throwable.shouldHaveCause()` | Asserts that the throwable have a cause. |
+| `throwable.shouldHaveCause { block }` | Asserts that the throwable have a cause, and pass it as parameter to the block |
+| `throwable.shouldHaveCauseInstanceOf<T>()` | Asserts that the throwable have a cause and it is of type T or a subclass of T. |
+| `throwable.shouldHaveCauseOfType<T>()` | Asserts that the throwable have a cause and it is **exactly** of type T. |
+
+| Result | |
+| ------ | --- |
+| `result.shouldBeSuccess()` | Asserts that the result is success |
+| `result.shouldBeSuccess(value)` | Asserts that the result is a success and the value is the same of the given one. |
+| `result.shouldBeSuccess(block)` | Asserts that the result is success and then, runs the block with the result value. |
+| `result.shouldBeFailure()` | Asserts that the result is failure |
+| `result.shouldBeFailureOfType<Type : Throwable>()` | Asserts that the result is a failure and the exception class is equals the same of the given one. |
+| `result.shouldBeFailure(block)` | Asserts that the result is failure and then, runs the block with the exception. |
+
+| Reflection |     |
+| ---------- | --- |
+| `kclass.shouldHaveAnnotations()` | Asserts that the class has some annotation | 
+| `kclass.shouldHaveAnnotations(n)` | Asserts that the class has exactly N annotation | 
+| `kclass.shouldBeAnnotatedWith<T>()` | Asserts that the class is annotated with the given type |
+| `kclass.shouldBeAnnotatedWith<T> { block }` | Asserts that the class is annotated with the given type, and then, runs the block with the annotation | 
+| `kclass.shouldHaveFunction(name)` | Asserts that the class have a function with the given name | 
+| `kclass.shouldHaveFunction(name) { block }` | Asserts that the class have a function with the given name, and then, runs the block with the function |
+| `kclass.shouldHaveMemberProperty(name)` | Asserts that the class have a member property with the given name | 
+| `kclass.shouldHaveMemberProperty(name) { block }` | Asserts that the class have a member property with the given name, and then, runs the block with the function |
+| `kclass.shouldBeSubtypeOf<T>()` | Asserts that the class is a subtype of T |
+| `kclass.shouldBeSupertypeOf<T>()` | Asserts that the class is a supertype of T |
+| `kclass.shouldBeData()` | Asserts that the class is a data class |
+| `kclass.shouldBeSealed()` | Asserts that the class is a sealed class | 
+| `kclass.shouldBeCompanion()` | Asserts that the class is a companion object | 
+| `kclass.shouldHavePrimaryConstructor()` | Asserts that the class has a primary constructor |
+| `kclass.shouldHaveVisibility(visibility)` | Asserts that the class has the given visibility | 
+| `kfunction.shouldHaveAnnotations()` | Asserts that the function has some annotation | 
+| `kfunction.shouldHaveAnnotations(n)` | Asserts that the function has exactly N annotation | 
+| `kfunction.shouldBeAnnotatedWith<T>()` | Asserts that the function is annotated with the given type |
+| `kfunction.shouldBeAnnotatedWith<T> { block }` | Asserts that the function is annotated with the given type, and then, runs the block with the annotation | 
+| `kfunction.shouldHaveReturnType<T>()` | Asserts that the function returns the given type |
+| `kfunction.shouldBeInline()` | Asserts that the function is inline |
+| `kfunction.shouldBeInfix()` | Asserts that the function is infix |
+| `kproperty.shouldBeOfType<T>()` | Asserts that the property is of the given type |
+| `kproperty.shouldBeConst()` | Asserts that the property is a const | 
+| `kproperty.shouldBeLateInit()` | Asserts that the property is a late init var | 
+| `kcallable.shouldHaveVisibility(visibility)` | Asserts that the member have the given visibility |
+| `kcallable.shouldBeFinal()` | Asserts that the member is final |
+| `kcallable.shouldBeOpen()` | Asserts that the member is open |
+| `kcallable.shouldBeAbstract()` | Asserts that the member is abstract |
+| `kcallable.shouldBeSuspendable()` | Asserts that the member is suspendable |
+| `kcallable.shouldAcceptParameters(parameters)` | Asserts that the member can be called with the parameters (check the types) |
+| `kcallable.shouldAcceptParameters(parameters) { block }` | Asserts that the member can be called with the parameters (check the types), and then, runs the block with the annotation |
+| `kcallable.shouldHaveParametersWithName(parameters)` | Asserts that the member has the parameters with the given name |
+| `kcallable.shouldHaveParametersWithName(parameters) { block }` | Asserts that the member has the parameters with the given name, and then, runs the block with the annotation |
+| `ktype.shouldBeOfType<T>()` | Asserts that the KType has the type T | 

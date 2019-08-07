@@ -1,38 +1,42 @@
 package io.kotlintest.runner.jvm
 
 import arrow.core.Try
-import io.kotlintest.Description
+import io.kotlintest.DoNotParallelize
 import io.kotlintest.Project
 import io.kotlintest.Spec
+import io.kotlintest.Tag
+import io.kotlintest.TestCaseFilter
+import io.kotlintest.extensions.SpecifiedTagsTagExtension
 import io.kotlintest.runner.jvm.internal.NamedThreadFactory
 import io.kotlintest.runner.jvm.spec.SpecExecutor
 import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.reflect.KClass
-import kotlin.reflect.jvm.jvmName
+import kotlin.reflect.full.findAnnotation
 
 class TestEngine(val classes: List<KClass<out Spec>>,
-                 parallelism: Int,
+                 filters: List<TestCaseFilter>,
+                 val parallelism: Int,
+                 includedTags: Set<Tag>,
+                 excludedTags: Set<Tag>,
                  val listener: TestEngineListener) {
 
   private val logger = LoggerFactory.getLogger(this.javaClass)
-  private val error = AtomicReference<Throwable?>(null)
 
-  // the main executor is used to parallelize the execution of specs
-  // inside a spec, tests themselves are executed as coroutines
-  private val executor = Executors.newFixedThreadPool(parallelism, NamedThreadFactory("kotlintest-engine-%d"))
-  private val listenerExecutors = ConcurrentLinkedQueue<ExecutorService>()
+  // the scheduler executor is used for notifications on when a test case timeout has been reached
   private val scheduler = Executors.newSingleThreadScheduledExecutor()
-  private val specExecutor = SpecExecutor(listener, listenerExecutors, scheduler)
 
+  private val specExecutor = SpecExecutor(listener, scheduler)
 
-  private fun afterAll() = Try {
-    Project.afterAll()
+  init {
+    Project.registerTestCaseFilter(filters)
+    if (includedTags.isNotEmpty() || excludedTags.isNotEmpty())
+      Project.registerExtension(SpecifiedTagsTagExtension(includedTags, excludedTags))
   }
+
+  private fun afterAll() = Try { Project.afterAll() }
 
   private fun start() = Try {
     listener.engineStarted(classes)
@@ -40,26 +44,37 @@ class TestEngine(val classes: List<KClass<out Spec>>,
   }
 
   private fun submitAll() = Try {
-    logger.debug("Submitting ${classes.size} specs")
+    logger.trace("Submitting ${classes.size} specs")
 
-    // the classes are ordered using an instance of SpecExecutionOrder before
-    // being submitted in the order returned
-    Project.specExecutionOrder().sort(classes).forEach { submitSpec(it) }
+    // the classes are ordered using an instance of SpecExecutionOrder
+    val specs = Project.specExecutionOrder().sort(classes)
+
+    // if parallelize is enabled, then we must order the specs into two sets, depending on if they
+    // are thread safe or not.
+    val (single, parallel) = if (parallelism == 1)
+      specs to emptyList()
+    else
+      specs.partition { it.isDoNotParallelize() }
+
+    submitBatch(parallel, parallelism)
+    submitBatch(single, 1)
+  }
+
+  private fun submitBatch(specs: List<KClass<out Spec>>, parallelism: Int) {
+    val executor = Executors.newFixedThreadPool(parallelism, NamedThreadFactory("kotlintest-engine-%d"))
+    specs.forEach { submitSpec(it, executor) }
     executor.shutdown()
 
-    logger.debug("Waiting for spec execution to terminate")
-    try {
+    logger.trace("Waiting for spec execution to terminate")
+    val error = try {
       executor.awaitTermination(1, TimeUnit.DAYS)
+      null
     } catch (t: InterruptedException) {
-      error.compareAndSet(null, t)
+      t
     }
 
-    // the executor may have terminated early because it was shutdown immediately
-    // by an error in a submission. This will be reflected in the error reference
-    // being set to a non null value
-    val t = error.get()
-    if (t != null)
-      throw t
+    if (error != null)
+      throw error
   }
 
   private fun end(t: Throwable?) = Try {
@@ -85,22 +100,17 @@ class TestEngine(val classes: List<KClass<out Spec>>,
     )
   }
 
-  private fun submitSpec(klass: KClass<out Spec>) {
+  private fun submitSpec(klass: KClass<out Spec>, executor: ExecutorService) {
     executor.submit {
       createSpec(klass).fold(
-          // if there is an error creating the spec then we
-          // will add a placeholder spec so we can see the error in intellij/gradle
-          // otherwise it won't appear
           { t ->
-            val desc = Description.root(klass.jvmName)
-            listener.beforeSpecClass(desc, klass)
-            listener.afterSpecClass(desc, klass, t)
-            error.compareAndSet(null, t)
+            listener.specInitialisationFailed(klass, t)
             executor.shutdownNow()
           },
           { spec ->
             specExecutor.execute(spec).onFailure { t ->
-              error.compareAndSet(null, t)
+              // todo move this to a new listener method like specFailed(klass, t)
+              listener.specInitialisationFailed(klass, t)
               executor.shutdownNow()
             }
           }
@@ -116,3 +126,5 @@ class TestEngine(val classes: List<KClass<out Spec>>,
         }
       }
 }
+
+fun KClass<*>.isDoNotParallelize(): Boolean = findAnnotation<DoNotParallelize>() != null

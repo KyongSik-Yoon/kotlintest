@@ -7,6 +7,7 @@ import io.kotlintest.TestResult
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.reflect.KClass
 
+@Suppress("LocalVariableName")
 class IsolationTestEngineListener(val listener: TestEngineListener) : TestEngineListener {
 
   private val runningSpec = AtomicReference<Description?>(null)
@@ -40,12 +41,22 @@ class IsolationTestEngineListener(val listener: TestEngineListener) : TestEngine
     }
   }
 
-  override fun beforeSpecClass(description: Description, klass: KClass<out Spec>) {
-    if (runningSpec.get() == description) {
-      listener.beforeSpecClass(description, klass)
+  override fun specInitialisationFailed(klass: KClass<out Spec>, t: Throwable) {
+    if (runningSpec.compareAndSet(null, Description.spec(klass))) {
+      listener.specInitialisationFailed(klass, t)
     } else {
       queue {
-        beforeSpecClass(description, klass)
+        specInitialisationFailed(klass, t)
+      }
+    }
+  }
+
+  override fun beforeSpecClass(klass: KClass<out Spec>) {
+    if (runningSpec.get() == Description.spec(klass)) {
+      listener.beforeSpecClass(klass)
+    } else {
+      queue {
+        beforeSpecClass(klass)
       }
     }
   }
@@ -90,14 +101,14 @@ class IsolationTestEngineListener(val listener: TestEngineListener) : TestEngine
     }
   }
 
-  override fun afterSpecClass(description: Description, klass: KClass<out Spec>, t: Throwable?) {
-    if (runningSpec.get() == description) {
-      listener.afterSpecClass(description, klass, t)
+  override fun afterSpecClass(klass: KClass<out Spec>, t: Throwable?) {
+    if (runningSpec.get() == Description.spec(klass)) {
+      listener.afterSpecClass(klass, t)
       runningSpec.set(null)
       replay()
     } else {
       queue {
-        afterSpecClass(description, klass, t)
+        afterSpecClass(klass, t)
       }
     }
   }

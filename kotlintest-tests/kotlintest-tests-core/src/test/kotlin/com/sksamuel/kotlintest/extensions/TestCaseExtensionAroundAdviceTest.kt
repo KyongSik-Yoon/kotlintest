@@ -5,6 +5,7 @@ import io.kotlintest.TestResult
 import io.kotlintest.extensions.SpecLevelExtension
 import io.kotlintest.extensions.TestCaseExtension
 import io.kotlintest.specs.StringSpec
+import java.time.Duration
 
 // this tests that we can manipulate the result of a test case from an extension
 class TestCaseExtensionAroundAdviceTest : StringSpec() {
@@ -17,7 +18,7 @@ class TestCaseExtensionAroundAdviceTest : StringSpec() {
         testCase.description.name == "test1" -> complete(TestResult.Ignored)
         testCase.description.name == "test2" -> execute(testCase) {
           when (it.error) {
-            is WibbleException -> complete(TestResult.Success)
+            is WibbleException -> complete(TestResult.success(Duration.ZERO))
             else -> complete(it)
           }
         }
@@ -31,19 +32,19 @@ class TestCaseExtensionAroundAdviceTest : StringSpec() {
   override fun extensions(): List<SpecLevelExtension> = listOf(MyExt)
 
   init {
+    // this exception should not be thrown as the extension will skip evaluation of the test
     "test1" {
-      // this exception should not be thrown as the extension will skip evaluation of the test
       throw RuntimeException()
     }
+    // this exception will be thrown but then the test extension will override the failed result to return a success
     "test2" {
-      // this exception will be thrown but then the test extension will override and return success
       throw WibbleException()
     }
+    // the config for this test should be carried through to the extension
     "test3".config(enabled = false) {
-      // the config for this test should be carried through to the interceptor
     }
+    //  config for this test should be overriden so that the test is actually disabled, and therefore the exception will not be thrown
     "test4".config(enabled = true) {
-      //  config for this test should be overriden so that the value set on the test case itself is overruled
       throw RuntimeException()
     }
   }
